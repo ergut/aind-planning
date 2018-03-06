@@ -99,10 +99,10 @@ class AirCargoProblem(Problem):
                         precond_neg = []
                         effect_add = [expr("At({}, {})".format(c, a))]
                         effect_rem = [expr("In({}, {})".format(c, p))]
-                        load = Action(expr("Unload({}, {}, {})".format(c, p, a)),
+                        unload = Action(expr("Unload({}, {}, {})".format(c, p, a)),
                                       [precond_pos, precond_neg],
                                       [effect_add, effect_rem])
-                        unloads.append(unloads)
+                        unloads.append(unload)
 
             return unloads
 
@@ -145,10 +145,13 @@ class AirCargoProblem(Problem):
 
         kb = PropKB()
         kb.tell(decode_state(state, self.state_map).pos_sentence())
+        clauses = set(kb.clauses)
 
         for action in self.actions_list:
-            clauses = [x for x in kb.clauses if x in action.precond_pos and x not in action.precond_neg]
-            if clauses:
+            # All action.precond_pos should be in the state and no clause in action.precond_neg
+            clauses_and_pos = clauses.intersection(set(action.precond_pos))
+            clauses_and_neg = clauses.intersection(set(action.precond_neg))
+            if len(clauses_and_pos) == len(action.precond_pos) and len(clauses_and_neg) == 0:
                 possible_actions.append(action)
         return possible_actions
 
@@ -163,6 +166,21 @@ class AirCargoProblem(Problem):
         """
         # TODO implement
         new_state = FluentState([], [])
+
+        old_state = decode_state(state, self.state_map)
+
+        for pos in old_state.pos:
+            if pos in action.effect_rem:
+                new_state.neg.append(pos)
+            else:
+                new_state.pos.append(pos)
+
+        for neg in old_state.neg:
+            if neg in action.effect_add:
+                new_state.pos.append(neg)
+            else:
+                new_state.neg.append(neg)
+
         return encode_state(new_state, self.state_map)
 
     def goal_test(self, state: str) -> bool:
@@ -203,7 +221,14 @@ class AirCargoProblem(Problem):
         executed.
         """
         # TODO implement (see Russell-Norvig Ed-3 10.2.3  or Russell-Norvig Ed-2 11.2)
-        count = 0
+        kb = PropKB()
+        kb.tell(decode_state(node.state, self.state_map).pos_sentence())
+        clauses = set(kb.clauses)
+        clauses_and_goal = clauses.intersection(self.goal)
+
+        # Calculate number of actions away from goal
+        count = len(self.goal) - len(clauses_and_goal)
+
         return count
 
 
