@@ -11,6 +11,8 @@ from my_planning_graph import PlanningGraph
 
 from functools import lru_cache
 
+# I have reviewed some of the codes from https://github.com/ltfschoen/AIND-Planning to understand esp. the usage of aima
+# libraries.
 
 class AirCargoProblem(Problem):
     def __init__(self, cargos, planes, airports, initial: FluentState, goal: list):
